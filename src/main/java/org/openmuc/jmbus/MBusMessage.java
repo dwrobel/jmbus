@@ -24,12 +24,15 @@ import java.io.IOException;
 public class MBusMessage {
 
     private static final int RSP_UD_HEADER_LENGTH = 6;
+    private static final int SND_NR_UD_HEADER_LENGTH = 10;
 
     public enum MessageType {
         // the other message types (e.g. SND_NKE, REQ_UD2) cannot be sent from slave to master and are therefore
         // omitted.
         SINGLE_CHARACTER(0xE5),
-        RSP_UD(0x68);
+        RSP_UD(0x68),
+        SND_NR(0x44);
+
 
         private static final MessageType[] VALUES = values();
         private final int value;
@@ -59,6 +62,31 @@ public class MBusMessage {
         this.variableDataStructure = variableDataStructure;
     }
 
+    public static MBusMessage decode(byte[] buffer) throws IOException {
+        int messageLength = buffer[0] & 0xff;
+
+        if (messageLength != buffer.length - 1) {
+            throw new IOException("Wrong length field in frame header does not match the buffer length. Length field: "
+                    + messageLength + ", buffer length: " + buffer.length + " !");
+        }
+
+        MessageType messageType = MessageType.messageTypeFor(buffer[1]);
+        int addressField;
+        VariableDataStructure variableDataStructure;
+
+        switch (messageType) {
+            case SND_NR:
+                addressField = buffer[5] & 0xff;
+                variableDataStructure = new VariableDataStructure(buffer, SND_NR_UD_HEADER_LENGTH, messageLength, null, null);
+                break;
+            default:
+                // should not occur.
+                throw new RuntimeException("Case not supported " + messageType);
+        }
+
+        return new MBusMessage(messageType, addressField, variableDataStructure);
+    }
+
     public static MBusMessage decode(byte[] buffer, int length) throws IOException {
         MessageType messageType = MessageType.messageTypeFor(buffer[0]);
         int addressField;
@@ -71,6 +99,12 @@ public class MBusMessage {
             break;
         case RSP_UD:
             int messageLength = getLongFrameMessageLength(buffer, length);
+            checkLongFrameFields(buffer);
+            addressField = buffer[5] & 0xff;
+            variableDataStructure = new VariableDataStructure(buffer, RSP_UD_HEADER_LENGTH, messageLength, null, null);
+            break;
+            case SND_NR:
+            messageLength = getLongFrameMessageLength(buffer, length);
             checkLongFrameFields(buffer);
             addressField = buffer[5] & 0xff;
             variableDataStructure = new VariableDataStructure(buffer, RSP_UD_HEADER_LENGTH, messageLength, null, null);

@@ -33,16 +33,16 @@ class SerialLayer implements TransportLayer {
 
 	@Override
     public void open() throws IOException {
-        try {
-            portIdentifier = CommPortIdentifier.getPortIdentifier(serialBuilder.getSerialPortName());
-			serialPort = portIdentifier.open("jMBus", timeout);
-            serialPort.setSerialPortParams(serialBuilder.getBaudrate(), serialBuilder.getDataBits(), serialBuilder.getStopBits(),
-                   serialBuilder.getParity());
-	        os = new DataOutputStream(serialPort.getOutputStream());
-	        is = new DataInputStream(serialPort.getInputStream());
-		} catch (PortInUseException | NoSuchPortException | UnsupportedCommOperationException e) {
-			throw new IOException(e);
-		}
+//        try {
+//            portIdentifier = CommPortIdentifier.getPortIdentifier(serialBuilder.getSerialPortName());
+//			serialPort = null; //portIdentifier.open(new CommPortIdentifier("jMBus"), timeout);
+//            serialPort.setSerialPortParams(serialBuilder.getBaudrate(), serialBuilder.getDataBits(), serialBuilder.getStopBits(),
+//                   serialBuilder.getParity());
+//	        os = new DataOutputStream(serialPort.getOutputStream());
+//	        is = new DataInputStream(serialPort.getInputStream());
+//		} catch (PortInUseException | NoSuchPortException | UnsupportedCommOperationException e) {
+			throw new IOException("e");
+//		}
     }
 
     @Override

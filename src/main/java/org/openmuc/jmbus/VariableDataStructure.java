@@ -137,11 +137,17 @@ public class VariableDataStructure {
     }
 
     private void decryptAesCbcIv(byte[] buffer, int offset, int encryptedDataLength) throws DecodingException {
-        final int len = length - 5;
-        vdr = new byte[len];
+        vdr = new byte[encryptedDataLength];
         System.arraycopy(buffer, offset, vdr, 0, encryptedDataLength);
 
-        byte[] key = keyMap.get(linkLayerSecondaryAddress);
+        byte[] key = null;
+
+        if (keyMap != null)
+            key = keyMap.get(linkLayerSecondaryAddress);
+
+        if (key == null)
+            key = new byte[16];
+
         if (key == null) {
             String msg = MessageFormat.format(
                     "Unable to decode encrypted payload. \nSecondary address key was not registered: \n{0}",
@@ -149,7 +155,28 @@ public class VariableDataStructure {
             throw new DecodingException(msg);
         }
 
-        decodeDataRecords(decryptMessage(key), 0, len);
+        key[0] = 0x03;
+        key[15] = 0x01;
+
+        byte[] iv = new byte[16];
+
+        for (int i = 0; i < 8; i++) {
+            iv[i] = buffer[i + 2];
+        }
+
+        final byte paddingWithAccessNumber = buffer[11];
+
+        for (int i = 8; i < 16; i++) {
+            iv[i] = paddingWithAccessNumber;
+        }
+
+        System.out.println("iv  : " + DatatypeConverter.printHexBinary(iv));
+        System.out.println("key : " + DatatypeConverter.printHexBinary(key));
+        System.out.println("denc: " + DatatypeConverter.printHexBinary(vdr));
+
+        decryptAesCbcIv(key, iv);
+
+        decodeDataRecords(vdr, 0, encryptedDataLength);
     }
 
     private void decodeLongHeaderData() throws DecodingException {
@@ -355,6 +382,17 @@ public class VariableDataStructure {
             throw new DecodingException(newDecyptionExceptionMsg());
         }
         vdr = result;
+    }
+
+    private void decryptAesCbcIv(byte[] key, byte[] iv) throws DecodingException {
+        AesCrypt aes = AesCrypt.newAesCrypt(key, iv);
+        byte[] result = aes.decrypt(this.vdr, this.vdr.length);
+        System.out.println("dclr: " + DatatypeConverter.printHexBinary(result));
+
+        if (!(result[0] == 0x2f && result[1] == 0x2f)) {
+            throw new DecodingException(newDecyptionExceptionMsg());
+        }
+        System.arraycopy(result, 0, vdr, 0, vdr.length);
     }
 
     private void decryptAesCbcIv(byte[] key, final int len) throws DecodingException {
